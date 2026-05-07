@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"flag"
+	"fmt"
 	"io"
 	"log"
 	"net"
@@ -11,20 +13,23 @@ import (
 	"time"
 )
 
-var (
-	proxyAddr  = net.JoinHostPort("localhost", "2015")
-	minAgeDays = 14
-)
-
 func main() {
+	port := flag.Int("port", 2015, "local port to listen on")
+	minAgeDays := flag.Int("min-age-days", 14, "minimum age (in days) a crate version must be before it is selectable")
+	flag.Parse()
+
+	proxyAddr := net.JoinHostPort("localhost", fmt.Sprintf("%d", *port))
+
 	mux := http.NewServeMux()
-	mux.Handle("GET /index/{path...}", http.HandlerFunc(indexHandler))
+	mux.Handle("GET /index/{path...}", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		indexHandler(w, r, *minAgeDays)
+	}))
 
 	log.Printf("cargo-age-proxy listening on %s", proxyAddr)
 	log.Fatal(http.ListenAndServe(proxyAddr, mux))
 }
 
-func indexHandler(w http.ResponseWriter, r *http.Request) {
+func indexHandler(w http.ResponseWriter, r *http.Request, minAgeDays int) {
 	path := r.PathValue("path")
 	statusCode := http.StatusOK
 
