@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"io"
 	"log"
@@ -50,20 +51,30 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	scanner := bufio.NewScanner(resp.Body)
-	// Sparse index lines can be long; give scanner a 1 MiB buffer.
-	const maxToken = 1024 * 1024
-	buf := make([]byte, 64*1024)
-	scanner.Buffer(buf, maxToken)
-
+	body := bufio.NewReader(resp.Body)
 	cutoff := time.Now().UTC().AddDate(0, 0, -minAgeDays)
 
-	for scanner.Scan() {
-		line := scanner.Bytes()
+	for {
+		line, err := body.ReadBytes('\n')
+		if err != nil && err != io.EOF {
+			log.Printf("read error: %v", err)
+			break
+		}
+		if len(line) == 0 {
+			if err == io.EOF {
+				break
+			}
+			continue
+		}
+
+		line = bytes.TrimSuffix(line, []byte("\n"))
 
 		var entry map[string]any
-		if err := json.Unmarshal(line, &entry); err != nil {
-			log.Printf("unparseable index line: %v", err)
+		if e := json.Unmarshal(line, &entry); e != nil {
+			log.Printf("unparseable index line: %v", e)
+			if err == io.EOF {
+				break
+			}
 			continue
 		}
 
@@ -83,15 +94,14 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 			statusCode = http.StatusInternalServerError
 			http.Error(w, "Error marshaling upstream response", statusCode)
 			break
-		} else if _, err = w.Write(out); err != nil {
+		} else if _, err := w.Write(out); err != nil {
+			break
+		} else if _, err := w.Write([]byte("\n")); err != nil {
 			break
 		}
-		if _, err = w.Write([]byte("\n")); err != nil {
-			break
-		}
-	}
 
-	if err := scanner.Err(); err != nil {
-		log.Printf("scanner error: %v", err)
+		if err == io.EOF {
+			break
+		}
 	}
 }
