@@ -3,7 +3,7 @@ package main
 import (
 	"bufio"
 	"encoding/json"
-	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -12,50 +12,29 @@ import (
 
 var (
 	proxyAddr  = net.JoinHostPort("localhost", "2015")
-	proxyBase  = fmt.Sprintf("http://%s", proxyAddr)
 	minAgeDays = 14
 )
 
 func main() {
 	mux := http.NewServeMux()
-	mux.Handle("GET /index/config.json", http.HandlerFunc(configHandler))
 	mux.Handle("GET /index/{path...}", http.HandlerFunc(indexHandler))
 
 	log.Printf("cargo-age-proxy listening on %s", proxyAddr)
-	log.Fatal(http.ListenAndServe(proxyAddr, logRequest(mux)))
-}
-
-func configHandler(w http.ResponseWriter, r *http.Request) {
-	resp, err := http.Get("https://index.crates.io/config.json")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
-		return
-	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-
-	cfg := struct {
-		API string `json:"api"`
-		DL  string `json:"dl"`
-	}{}
-	if err := json.NewDecoder(resp.Body).Decode(&cfg); err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
-		return
-	}
-	cfg.DL = proxyBase + "/crates/{crate}/{crate}-{version}.crate"
-
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(cfg); err != nil {
-		log.Printf("json encode error: %v", err)
-	}
+	log.Fatal(http.ListenAndServe(proxyAddr, mux))
 }
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
 	path := r.PathValue("path")
+	statusCode := http.StatusOK
+
+	defer func() {
+		log.Printf("%s %s %d %s", r.Method, r.URL.Path, statusCode, http.StatusText(statusCode))
+	}()
+
 	resp, err := http.Get("https://index.crates.io/" + path)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
+		statusCode = http.StatusBadGateway
+		http.Error(w, err.Error(), statusCode)
 		return
 	}
 	defer func() {
@@ -64,6 +43,12 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
 	w.WriteHeader(resp.StatusCode)
+	statusCode = resp.StatusCode
+
+	if path == "config.json" {
+		_, _ = io.Copy(w, resp.Body)
+		return
+	}
 
 	scanner := bufio.NewScanner(resp.Body)
 	// Sparse index lines can be long; give scanner a 1 MiB buffer.
@@ -95,42 +80,18 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if out, err := json.Marshal(entry); err != nil {
-			http.Error(w, "Error marshaling upstream response", http.StatusInternalServerError)
-			return
-		} else {
-			if _, err = w.Write(out); err != nil {
-				return
-			}
+			statusCode = http.StatusInternalServerError
+			http.Error(w, "Error marshaling upstream response", statusCode)
+			break
+		} else if _, err = w.Write(out); err != nil {
+			break
 		}
 		if _, err = w.Write([]byte("\n")); err != nil {
-			return
+			break
 		}
 	}
 
 	if err := scanner.Err(); err != nil {
 		log.Printf("scanner error: %v", err)
 	}
-}
-
-// Source: https://stackoverflow.com/a/53272925 (huangapple, CC BY-SA 4.0)
-type logResponseWriter struct {
-	http.ResponseWriter
-	statusCode int
-}
-
-func newLogResponseWriter(w http.ResponseWriter) *logResponseWriter {
-	return &logResponseWriter{w, http.StatusOK}
-}
-
-func (w *logResponseWriter) WriteHeader(code int) {
-	w.statusCode = code
-	w.ResponseWriter.WriteHeader(code)
-}
-
-func logRequest(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		lw := newLogResponseWriter(w)
-		next.ServeHTTP(lw, r)
-		log.Printf("%s %s %d %s", r.Method, r.URL.Path, lw.statusCode, http.StatusText(lw.statusCode))
-	})
 }
