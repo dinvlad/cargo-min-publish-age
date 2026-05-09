@@ -1,0 +1,14 @@
+[package]
+name = "cargo-age-proxy"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "cargo-age-proxy"
+path = "src/main.rs"
+
+[dependencies]
+tiny_http = { version = "0.12.0", default-features = false }
+ureq = { version = "3.3.0", default-features = false, features = ["rustls"] }
+serde_json = { version = "1", default-features = false, features = ["std"] }
+time = { version = "0.3.47", default-features = false, features = ["std", "parsing"] }
