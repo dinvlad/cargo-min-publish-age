@@ -45,6 +45,10 @@ fn handle_index(path: &str, min_age: time::Duration) -> ResponseBox {
 
     let mut headers = Vec::new();
     for (name, value) in upstream.headers().iter() {
+        let n = name.as_str().to_lowercase();
+        if n == "content-length" || n == "transfer-encoding" {
+            continue;
+        }
         if let Ok(h) = Header::from_bytes(name.as_str().as_bytes(), value.as_bytes()) {
             headers.push(h);
         }
