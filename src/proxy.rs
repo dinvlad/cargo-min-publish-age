@@ -7,7 +7,7 @@ use tiny_http::{Header, Method, Response, ResponseBox, Server, StatusCode};
 pub fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let cfg = Config::load();
     let server = Server::http(format!("127.0.0.1:{}", cfg.port))?;
-    eprintln!("cargo-age-filter listening on 127.0.0.1:{}", cfg.port);
+    eprintln!("cargo-min-publish-age listening on 127.0.0.1:{}", cfg.port);
 
     for req in server.incoming_requests() {
         let method = req.method().clone();

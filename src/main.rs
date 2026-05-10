@@ -6,7 +6,7 @@ fn main() {
 
     let subcmd = match args.len() {
         1 => None,
-        _ if args[1] == "age-filter" => args.get(2).map(|s| s.as_str()),
+        _ if args[1] == "min-publish-age" => args.get(2).map(|s| s.as_str()),
         _ => Some(args[1].as_str()),
     };
 
@@ -27,12 +27,12 @@ fn main() {
         }
         Some(other) => {
             eprintln!("Unknown subcommand: {}", other);
-            eprintln!("Usage: cargo age-filter [install|uninstall|proxy]");
+            eprintln!("Usage: cargo min-publish-age [install|uninstall|proxy]");
             std::process::exit(1);
         }
         None => {
-            println!("cargo-age-filter");
-            println!("Run 'cargo age-filter install' to set up the registry proxy.");
+            println!("cargo-min-publish-age");
+            println!("Run 'cargo min-publish-age install' to set up the registry proxy.");
         }
     }
 }

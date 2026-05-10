@@ -36,7 +36,7 @@ impl Config {
             }
         }
 
-        if let Some(item) = doc.get("age-filter").and_then(|t| t.get("port")) {
+        if let Some(item) = doc.get("min-publish-age").and_then(|t| t.get("port")) {
             if let Some(n) = item.as_integer() {
                 if n > 0 && n <= u16::MAX as i64 {
                     cfg.port = n as u16;

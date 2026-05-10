@@ -1,10 +1,10 @@
 [package]
-name = "cargo-age-proxy"
+name = "cargo-min-publish-age"
 version = "0.1.0"
 edition = "2021"
 
 [[bin]]
-name = "cargo-age-proxy"
+name = "cargo-min-publish-age"
 path = "src/main.rs"
 
 [dependencies]
