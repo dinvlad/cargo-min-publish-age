@@ -31,3 +31,10 @@ cargo min-publish-age install --port 2024 --age "7 days"
 ```sh
 cargo min-publish-age uninstall
 ```
+
+### Notes
+
+- This solution has been tested on Linux with SystemD, but yet to be tested on macOS
+- I purposefully didn't publish it on Crates.io to avoid potential user confusion at officially named `min-publish-age` option,
+  and that source provenance works better with a direct Git package URL anyway
+- While it has worked for me, please use at your own risk :-)
