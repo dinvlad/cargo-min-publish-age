@@ -3,6 +3,8 @@ use std::io;
 use time::{format_description::well_known::Rfc3339, Duration, OffsetDateTime};
 use tiny_http::{Header, Method, Response, ResponseBox, Server, StatusCode};
 
+mod config;
+
 fn main() {
     const PORT: u16 = 2015;
     const MIN_AGE_DAYS: i64 = 14;
