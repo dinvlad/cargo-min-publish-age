@@ -4,10 +4,12 @@ use std::io;
 use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 use tiny_http::{Header, Method, Response, ResponseBox, Server, StatusCode};
 
-pub fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let cfg = Config::load();
-    let server = Server::http(format!("127.0.0.1:{}", cfg.port))?;
-    eprintln!("cargo-min-publish-age listening on 127.0.0.1:{}", cfg.port);
+pub fn run(port_override: Option<u16>) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let port = port_override.unwrap_or_else(|| Config::load().port);
+    let server = Server::http(format!("127.0.0.1:{}", port))?;
+    eprintln!("cargo-min-publish-age listening on 127.0.0.1:{}", port);
+
+    let min_age = Config::load().min_age;
 
     for req in server.incoming_requests() {
         let method = req.method().clone();
@@ -16,7 +18,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let res = if method != Method::Get {
             Response::empty(405).boxed()
         } else if let Some(path) = url.strip_prefix("/index/") {
-            handle_index(path, cfg.min_age)
+            handle_index(path, min_age)
         } else {
             Response::empty(404).boxed()
         };
